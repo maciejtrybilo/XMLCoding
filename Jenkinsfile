@@ -8,7 +8,7 @@ pipeline {
     stage('Builds') {
         parallel {
             stage('Build Linux') {
-              agent any
+              agent linux
               when {
                 anyOf {
                   branch 'master'
