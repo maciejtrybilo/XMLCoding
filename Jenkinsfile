@@ -9,7 +9,7 @@ pipeline {
         parallel {
             stage('Build Linux') {
               agent {
-                label 'linux'
+                label 'master'
               }
               when {
                 anyOf {
