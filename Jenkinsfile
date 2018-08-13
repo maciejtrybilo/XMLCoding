@@ -7,22 +7,6 @@ pipeline {
   stages {
     stage('Builds') {
         parallel {
-            stage('Build MacOS') {
-              agent {
-                label 'xcode'
-              }
-              when {
-                anyOf {
-                  branch 'master'
-                }
-              }
-              steps {
-                script {
-                  sh 'swift test'
-                }
-              }
-            }
-
             stage('Build Linux') {
               agent any
               when {
@@ -32,9 +16,7 @@ pipeline {
               }
               steps {
                 script {
-                  mgw.inDocker('liveui/boost-base:1.1.1') {
-                    sh 'swift test'
-                  }
+                  sh './scripts/docker-shortcuts/test.sh'
                 }
               }
             }
@@ -42,3 +24,4 @@ pipeline {
     }
   }
 }
+
