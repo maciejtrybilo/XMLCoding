@@ -9,7 +9,7 @@ pipeline {
         parallel {
             stage('Build MacOS') {
               agent {
-                label 'xcode'
+                label 'mac'
               }
               when {
                 anyOf {
@@ -23,7 +23,7 @@ pipeline {
               }
             }
 
-            stage('Build Linux') {
+            stage('Build Linux (Docker)') {
               agent any
               when {
                 anyOf {
@@ -32,9 +32,7 @@ pipeline {
               }
               steps {
                 script {
-                  mgw.inDocker('liveui/boost-base:1.1.1') {
-                    sh 'swift test'
-                  }
+                  sh './scripts/docker-shortcuts/test.sh'
                 }
               }
             }
