@@ -7,23 +7,7 @@ pipeline {
   stages {
     stage('Builds') {
         parallel {
-            stage('Build MacOS') {
-              agent {
-                label 'mac'
-              }
-              when {
-                anyOf {
-                  branch 'master'
-                }
-              }
-              steps {
-                script {
-                  sh 'swift test'
-                }
-              }
-            }
-
-            stage('Build Linux (Docker)') {
+            stage('Build Linux') {
               agent any
               when {
                 anyOf {
