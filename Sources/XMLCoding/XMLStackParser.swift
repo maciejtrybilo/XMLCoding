@@ -12,6 +12,10 @@ import Foundation
 // Data Representation
 //===----------------------------------------------------------------------===//
 
+internal struct MissingValue {
+    
+}
+
 public struct XMLHeader {
     /// the XML standard that the produced document conforms to.
     var version: Double? = nil
@@ -185,8 +189,8 @@ internal class _XMLElement {
                     }
                 // if the node is empty and there is no existing value
                 } else if node[childElement.key] == nil {
-                    // an empty node can be treated as an empty dictionary
-                    node[childElement.key] = [:]
+                    // we mark an empty node as having a missing value
+                    node[childElement.key] = MissingValue()
                 }
             }
         }
