@@ -44,6 +44,7 @@ class XMLParsingTests: XCTestCase {
         let data: Data?
         let date: Date?
         let bool: Bool?
+        let int: Int?
         let double: Double?
         
         enum CodingKeys: String, CodingKey {
@@ -52,6 +53,7 @@ class XMLParsingTests: XCTestCase {
             case data = "Data"
             case date = "Date"
             case bool = "Bool"
+            case int = "Int"
             case double = "Double"
         }
     }
@@ -126,6 +128,7 @@ class XMLParsingTests: XCTestCase {
                     <Data>ZGF0YTE=</Data>
                     <Date>1534352914</Date>
                     <Bool>true</Bool>
+                    <Int>77</Int>
                     <Double>45.345</Double>
                 </Metadata>
             </Response>
@@ -147,6 +150,7 @@ class XMLParsingTests: XCTestCase {
         
         XCTAssertEqual("data1", String(data: response.metadata.data!, encoding: .utf8)) // decode the data
         XCTAssertEqual(Date(timeIntervalSince1970: 1534352914), response.metadata.date) // decode the date
+        XCTAssertEqual(77, response.metadata.int) // decode the integer
         XCTAssertEqual(true, response.metadata.bool) // decode the boolean
         
         let double = response.metadata.double!
@@ -252,6 +256,7 @@ class XMLParsingTests: XCTestCase {
                     <Data></Data>
                     <Date></Date>
                     <Bool></Bool>
+                    <Int></Int>
                     <Double></Double>
                 </Metadata>
             </Response>
@@ -275,6 +280,7 @@ class XMLParsingTests: XCTestCase {
         XCTAssertNil(response.metadata.data) // the Data tag is empty and optional
         XCTAssertNil(response.metadata.date) // the Date tag is empty and optional
         XCTAssertNil(response.metadata.bool) // the Bool tag is empty and optional
+        XCTAssertNil(response.metadata.int) // the Int tag is empty and optional
         XCTAssertNil(response.metadata.double) // the Double tag is empty and optional
     }
     
@@ -325,6 +331,7 @@ class XMLParsingTests: XCTestCase {
                     <Data />
                     <Date />
                     <Bool />
+                    <Int />
                     <Double />
                 </Metadata>
             </Response>
@@ -348,6 +355,7 @@ class XMLParsingTests: XCTestCase {
         XCTAssertNil(response.metadata.data) // the Data tag is empty and optional
         XCTAssertNil(response.metadata.date) // the Date tag is empty and optional
         XCTAssertNil(response.metadata.bool) // the Bool tag is empty and optional
+        XCTAssertNil(response.metadata.int) // the Int tag is empty and optional
         XCTAssertNil(response.metadata.double) // the Double tag is empty and optional
     }
     
