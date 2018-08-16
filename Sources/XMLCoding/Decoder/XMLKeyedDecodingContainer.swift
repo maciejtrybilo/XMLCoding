@@ -51,6 +51,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         }
     }
     
+    public func decodeIfPresent(_ type: Bool.Type, forKey key: Key) throws -> Bool? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: Bool.self)
+    }
+    
     public func decode(_ type: Bool.Type, forKey key: Key) throws -> Bool {
         guard let entry = self.container[key.stringValue] else {
             throw DecodingError.keyNotFound(key, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "No value associated with key \(key) (\"\(key.stringValue)\")."))
@@ -64,6 +75,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         }
         
         return value
+    }
+    
+    public func decodeIfPresent(_ type: Int.Type, forKey key: Key) throws -> Int? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: Int.self)
     }
     
     public func decode(_ type: Int.Type, forKey key: Key) throws -> Int {
@@ -81,6 +103,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         return value
     }
     
+    public func decodeIfPresent(_ type: Int8.Type, forKey key: Key) throws -> Int8? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: Int8.self)
+    }
+    
     public func decode(_ type: Int8.Type, forKey key: Key) throws -> Int8 {
         guard let entry = self.container[key.stringValue] else {
             throw DecodingError.keyNotFound(key, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "No value associated with key \(key) (\"\(key.stringValue)\")."))
@@ -94,6 +127,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         }
         
         return value
+    }
+    
+    public func decodeIfPresent(_ type: Int16.Type, forKey key: Key) throws -> Int16? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: Int16.self)
     }
     
     public func decode(_ type: Int16.Type, forKey key: Key) throws -> Int16 {
@@ -111,6 +155,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         return value
     }
     
+    public func decodeIfPresent(_ type: Int32.Type, forKey key: Key) throws -> Int32? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: Int32.self)
+    }
+    
     public func decode(_ type: Int32.Type, forKey key: Key) throws -> Int32 {
         guard let entry = self.container[key.stringValue] else {
             throw DecodingError.keyNotFound(key, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "No value associated with key \(key) (\"\(key.stringValue)\")."))
@@ -124,6 +179,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         }
         
         return value
+    }
+    
+    public func decodeIfPresent(_ type: Int64.Type, forKey key: Key) throws -> Int64? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: Int64.self)
     }
     
     public func decode(_ type: Int64.Type, forKey key: Key) throws -> Int64 {
@@ -141,6 +207,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         return value
     }
     
+    public func decodeIfPresent(_ type: UInt.Type, forKey key: Key) throws -> UInt? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: UInt.self)
+    }
+    
     public func decode(_ type: UInt.Type, forKey key: Key) throws -> UInt {
         guard let entry = self.container[key.stringValue] else {
             throw DecodingError.keyNotFound(key, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "No value associated with key \(key) (\"\(key.stringValue)\")."))
@@ -154,6 +231,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         }
         
         return value
+    }
+    
+    public func decodeIfPresent(_ type: UInt8.Type, forKey key: Key) throws -> UInt8? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: UInt8.self)
     }
     
     public func decode(_ type: UInt8.Type, forKey key: Key) throws -> UInt8 {
@@ -171,6 +259,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         return value
     }
     
+    public func decodeIfPresent(_ type: UInt16.Type, forKey key: Key) throws -> UInt16? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: UInt16.self)
+    }
+    
     public func decode(_ type: UInt16.Type, forKey key: Key) throws -> UInt16 {
         guard let entry = self.container[key.stringValue] else {
             throw DecodingError.keyNotFound(key, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "No value associated with key \(key) (\"\(key.stringValue)\")."))
@@ -184,6 +283,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         }
         
         return value
+    }
+    
+    public func decodeIfPresent(_ type: UInt32.Type, forKey key: Key) throws -> UInt32? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: UInt32.self)
     }
     
     public func decode(_ type: UInt32.Type, forKey key: Key) throws -> UInt32 {
@@ -201,6 +311,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         return value
     }
     
+    public func decodeIfPresent(_ type: UInt64.Type, forKey key: Key) throws -> UInt64? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: UInt64.self)
+    }
+    
     public func decode(_ type: UInt64.Type, forKey key: Key) throws -> UInt64 {
         guard let entry = self.container[key.stringValue] else {
             throw DecodingError.keyNotFound(key, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "No value associated with key \(key) (\"\(key.stringValue)\")."))
@@ -214,6 +335,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         }
         
         return value
+    }
+    
+    public func decodeIfPresent(_ type: Float.Type, forKey key: Key) throws -> Float? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: Float.self)
     }
     
     public func decode(_ type: Float.Type, forKey key: Key) throws -> Float {
@@ -231,6 +363,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         return value
     }
     
+    public func decodeIfPresent(_ type: Double.Type, forKey key: Key) throws -> Double? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: Double.self)
+    }
+    
     public func decode(_ type: Double.Type, forKey key: Key) throws -> Double {
         guard let entry = self.container[key.stringValue] else {
             throw DecodingError.keyNotFound(key, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "No value associated with key \(key) (\"\(key.stringValue)\")."))
@@ -246,6 +389,17 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         return value
     }
     
+    public func decodeIfPresent(_ type: String.Type, forKey key: Key) throws -> String? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: String.self)
+    }
+    
     public func decode(_ type: String.Type, forKey key: Key) throws -> String {
         guard let entry = self.container[key.stringValue] else {
             throw DecodingError.keyNotFound(key, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "No value associated with key \(key) (\"\(key.stringValue)\")."))
@@ -255,10 +409,22 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         defer { self.decoder.codingPath.removeLast() }
         
         guard let value = try self.decoder.unbox(entry, as: String.self) else {
-            throw DecodingError.valueNotFound(type, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "Expected \(type) value but found null instead."))
+            // treat a missing but required string as an empty string
+            return ""
         }
         
         return value
+    }
+    
+    public func decodeIfPresent<T : Decodable>(_ type: T.Type, forKey key: Key) throws -> T? {
+        guard let entry = self.container[key.stringValue] else {
+            return nil
+        }
+        
+        self.decoder.codingPath.append(key)
+        defer { self.decoder.codingPath.removeLast() }
+        
+        return try self.decoder.unbox(entry, as: type)
     }
     
     public func decode<T : Decodable>(_ type: T.Type, forKey key: Key) throws -> T {
@@ -270,6 +436,11 @@ internal struct _XMLKeyedDecodingContainer<K : CodingKey> : KeyedDecodingContain
         defer { self.decoder.codingPath.removeLast() }
         
         guard let value = try self.decoder.unbox(entry, as: type) else {
+            if type == Data.self || type == NSData.self {
+                // treat a missing but required Data as an empty Data
+                return Data() as! T
+            }
+            
             throw DecodingError.valueNotFound(type, DecodingError.Context(codingPath: self.decoder.codingPath, debugDescription: "Expected \(type) value but found null instead."))
         }
         

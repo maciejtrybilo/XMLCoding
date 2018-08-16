@@ -907,17 +907,35 @@ extension _XMLEncoder {
         if let boolean = value as? Bool {
             return .boolean(boolean)
         } else if let string = value as? String {
-            return .string(string.description)
+            return .string(string)
         } else if let int = value as? Int64 {
             return .int64(int)
         } else if let int = value as? UInt64 {
             return .uint64(int)
         } else if let double = value as? Double {
             return .double(double)
+        } else if let double = value as? Float {
+            return .double(Double(double))
         } else if let date = value as? Date {
             return try self.box(date)
         } else if let data = value as? Data {
             return try self.box(data)
+        } else if let int = value as? Int {
+            return .int64(Int64(int))
+        } else if let int = value as? Int8 {
+            return .int64(Int64(int))
+        } else if let int = value as? Int16 {
+            return .int64(Int64(int))
+        } else if let int = value as? Int32 {
+            return .int64(Int64(int))
+        } else if let int = value as? UInt {
+            return .uint64(UInt64(int))
+        } else if let int = value as? UInt8 {
+            return .uint64(UInt64(int))
+        } else if let int = value as? UInt16 {
+            return .uint64(UInt64(int))
+        } else if let int = value as? UInt32 {
+            return .uint64(UInt64(int))
         }
         
         let depth = self.storage.count

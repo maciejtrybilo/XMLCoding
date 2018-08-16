@@ -2,12 +2,20 @@ import XCTest
 
 extension XMLParsingTests {
     static let __allTests = [
-        ("testEmptyElement", testEmptyElement),
-        ("testEmptyElementNotEffectingPreviousElement", testEmptyElementNotEffectingPreviousElement),
-        ("testListDecodingWithCollapseItemTagStrategy", testListDecodingWithCollapseItemTagStrategy),
+        ("testValuesElement", testValuesElement),
+        ("testEmptyValuesElement", testEmptyValuesElement),
+        ("testFailOnMissingStringElement", testFailOnMissingStringElement),
+        ("testFailOnMissingDataElement", testFailOnMissingDataElement),
+        ("testOptionalEmptyValuesElement", testOptionalEmptyValuesElement),
+        ("testOptionalMissingValuesElement", testOptionalMissingValuesElement),
+        ("testOptionalEmptyValuesCombinedTagElement", testOptionalEmptyValuesCombinedTagElement),
+        ("testValuesWithISO8601DateElement", testValuesWithISO8601DateElement),
+        ("testEmptyStructureElement", testEmptyStructureElement),
+        ("testEmptyStructureElementNotEffectingPreviousElement", testEmptyStructureElementNotEffectingPreviousElement),
         ("testListDecodingWithDefaultStrategy", testListDecodingWithDefaultStrategy),
-        ("testSingletonListDecodingWithCollapseItemTagStrategy", testSingletonListDecodingWithCollapseItemTagStrategy),
         ("testSingletonListDecodingWithDefaultStrategy", testSingletonListDecodingWithDefaultStrategy),
+        ("testListDecodingWithCollapseItemTagStrategy", testListDecodingWithCollapseItemTagStrategy),
+        ("testSingletonListDecodingWithCollapseItemTagStrategy", testSingletonListDecodingWithCollapseItemTagStrategy)
     ]
 }
 

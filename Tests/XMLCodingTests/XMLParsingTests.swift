@@ -40,9 +40,31 @@ class XMLParsingTests: XCTestCase {
     
     struct Metadata: Codable, Equatable {
         let id: String
+        let optionalString: String?
+        let data: Data?
+        let date: Date?
+        let bool: Bool?
+        let int: Int?
+        let double: Double?
         
         enum CodingKeys: String, CodingKey {
             case id = "Id"
+            case optionalString = "OptionalString"
+            case data = "Data"
+            case date = "Date"
+            case bool = "Bool"
+            case int = "Int"
+            case double = "Double"
+        }
+    }
+    
+    struct MetadataWithData: Codable, Equatable {
+        let id: String
+        let data: Data
+        
+        enum CodingKeys: String, CodingKey {
+            case id = "Id"
+            case data = "Data"
         }
     }
     
@@ -54,9 +76,19 @@ class XMLParsingTests: XCTestCase {
         }
     }
     
-    struct Response: Codable {
+    struct Response: Codable, Equatable {
         let result: Result
         let metadata: Metadata
+        
+        enum CodingKeys: String, CodingKey {
+            case result = "Result"
+            case metadata = "Metadata"
+        }
+    }
+    
+    struct ResponseWithData: Codable, Equatable {
+        let result: Result
+        let metadata: MetadataWithData
         
         enum CodingKeys: String, CodingKey {
             case result = "Result"
@@ -84,7 +116,294 @@ class XMLParsingTests: XCTestCase {
         }
     }
     
-    func testEmptyElement() throws {
+    /// Test that we can decode/encode fields of various types
+    func testValuesElement() throws {
+        let inputString = """
+            <Response>
+                <Result>
+                    <Message>Hello</Message>
+                </Result>
+                <Metadata>
+                    <Id>id</Id>
+                    <Data>ZGF0YTE=</Data>
+                    <Date>1534352914</Date>
+                    <Bool>true</Bool>
+                    <Int>77</Int>
+                    <Double>45.345</Double>
+                </Metadata>
+            </Response>
+            """
+        
+        guard let inputData = inputString.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        let response = try XMLDecoder().decode(Response.self, from: inputData)
+        
+        // encode the output to make sure we get what we started with
+        let encoder = XMLEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970 // to match decoder strategy
+        let data = try encoder.encode(response, withRootKey: "Response")
+        
+        let response2 = try XMLDecoder().decode(Response.self, from: data)
+        XCTAssertEqual(response, response2)
+        
+        XCTAssertEqual("data1", String(data: response.metadata.data!, encoding: .utf8)) // decode the data
+        XCTAssertEqual(Date(timeIntervalSince1970: 1534352914), response.metadata.date) // decode the date
+        XCTAssertEqual(77, response.metadata.int) // decode the integer
+        XCTAssertEqual(true, response.metadata.bool) // decode the boolean
+        
+        let double = response.metadata.double!
+        XCTAssertTrue(double > 45 && double < 46)
+    }
+    
+    /// Test that we can decode/encode required but empty string and data fields correctly
+    func testEmptyValuesElement() throws {
+        let inputString = """
+            <Response>
+                <Result>
+                    <Message>Hello</Message>
+                </Result>
+                <Metadata>
+                    <Id></Id>
+                    <Data></Data>
+                </Metadata>
+            </Response>
+            """
+        
+        guard let inputData = inputString.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        let response = try XMLDecoder().decode(ResponseWithData.self, from: inputData)
+        
+        // encode the output to make sure we get what we started with
+        let encoder = XMLEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970 // to match decoder strategy
+        let data = try encoder.encode(response, withRootKey: "Response")
+        
+        let response2 = try XMLDecoder().decode(ResponseWithData.self, from: data)
+        XCTAssertEqual(response, response2)
+        
+        // has a zero length string
+        XCTAssertEqual(0, response.metadata.id.count)
+        // has a zero length data
+        XCTAssertEqual(0, response.metadata.data.count)
+    }
+    
+    /// Test that we only substitute an empty string if the field is present
+    func testFailOnMissingStringElement() throws {
+        let inputString = """
+            <Response>
+                <Result>
+                    <Message>Hello</Message>
+                </Result>
+                <Metadata>
+                    <Data></Data>
+                </Metadata>
+            </Response>
+            """
+        
+        guard let inputData = inputString.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        do {
+            _ = try XMLDecoder().decode(ResponseWithData.self, from: inputData)
+        } catch {
+            return
+        }
+        
+        XCTFail("Decoding should have failed")
+    }
+    
+    /// Test that we only substitute an empty data if the field is present
+    func testFailOnMissingDataElement() throws {
+        let inputString = """
+            <Response>
+                <Result>
+                    <Message>Hello</Message>
+                </Result>
+                <Metadata>
+                    <Id></Id>
+                </Metadata>
+            </Response>
+            """
+        
+        guard let inputData = inputString.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        do {
+            _ = try XMLDecoder().decode(ResponseWithData.self, from: inputData)
+        } catch {
+            return
+        }
+        
+        XCTFail("Decoding should have failed")
+    }
+    
+    /// Test that we can decode/encode empty optional fields correctly as nil optionals
+    func testOptionalEmptyValuesElement() throws {
+        let inputString = """
+            <Response>
+                <Result>
+                    <Message>Hello</Message>
+                </Result>
+                <Metadata>
+                    <Id>id</Id>
+                    <OptionalString></OptionalString>
+                    <Data></Data>
+                    <Date></Date>
+                    <Bool></Bool>
+                    <Int></Int>
+                    <Double></Double>
+                </Metadata>
+            </Response>
+            """
+        
+        guard let inputData = inputString.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        let response = try XMLDecoder().decode(Response.self, from: inputData)
+        
+        // encode the output to make sure we get what we started with
+        let encoder = XMLEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970 // to match decoder strategy
+        let data = try encoder.encode(response, withRootKey: "Response")
+        
+        let response2 = try XMLDecoder().decode(Response.self, from: data)
+        XCTAssertEqual(response, response2)
+        
+        XCTAssertNil(response.metadata.optionalString) // the OptionalString tag is empty and optional
+        XCTAssertNil(response.metadata.data) // the Data tag is empty and optional
+        XCTAssertNil(response.metadata.date) // the Date tag is empty and optional
+        XCTAssertNil(response.metadata.bool) // the Bool tag is empty and optional
+        XCTAssertNil(response.metadata.int) // the Int tag is empty and optional
+        XCTAssertNil(response.metadata.double) // the Double tag is empty and optional
+    }
+    
+    /// Test that we can decode/encode missing optional fields correctly as nil optionals
+    func testOptionalMissingValuesElement() throws {
+        let inputString = """
+            <Response>
+                <Result>
+                    <Message>Hello</Message>
+                </Result>
+                <Metadata>
+                    <Id>id</Id>
+                </Metadata>
+            </Response>
+            """
+        
+        guard let inputData = inputString.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        let response = try XMLDecoder().decode(Response.self, from: inputData)
+        
+        // encode the output to make sure we get what we started with
+        let encoder = XMLEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970 // to match decoder strategy
+        let data = try encoder.encode(response, withRootKey: "Response")
+        
+        let response2 = try XMLDecoder().decode(Response.self, from: data)
+        XCTAssertEqual(response, response2)
+        
+        XCTAssertNil(response.metadata.optionalString) // the OptionalString tag is empty and optional
+        XCTAssertNil(response.metadata.data) // the Data tag is empty and optional
+        XCTAssertNil(response.metadata.date) // the Date tag is empty and optional
+        XCTAssertNil(response.metadata.bool) // the Bool tag is empty and optional
+        XCTAssertNil(response.metadata.double) // the Double tag is empty and optional
+    }
+    
+    /// Test that we can decode/encode empty single-tag optional fields correctly as nil optionals
+    func testOptionalEmptyValuesCombinedTagElement() throws {
+        let inputString = """
+            <Response>
+                <Result>
+                    <Message>Hello</Message>
+                </Result>
+                <Metadata>
+                    <Id>id</Id>
+                    <OptionalString />
+                    <Data />
+                    <Date />
+                    <Bool />
+                    <Int />
+                    <Double />
+                </Metadata>
+            </Response>
+            """
+        
+        guard let inputData = inputString.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        let response = try XMLDecoder().decode(Response.self, from: inputData)
+        
+        // encode the output to make sure we get what we started with
+        let encoder = XMLEncoder()
+        encoder.dateEncodingStrategy = .secondsSince1970 // to match decoder strategy
+        let data = try encoder.encode(response, withRootKey: "Response")
+        
+        let response2 = try XMLDecoder().decode(Response.self, from: data)
+        XCTAssertEqual(response, response2)
+        
+        XCTAssertNil(response.metadata.optionalString) // the OptionalString tag is empty and optional
+        XCTAssertNil(response.metadata.data) // the Data tag is empty and optional
+        XCTAssertNil(response.metadata.date) // the Date tag is empty and optional
+        XCTAssertNil(response.metadata.bool) // the Bool tag is empty and optional
+        XCTAssertNil(response.metadata.int) // the Int tag is empty and optional
+        XCTAssertNil(response.metadata.double) // the Double tag is empty and optional
+    }
+    
+    /// Test that we can decode/encode ISO8601 dates correctly
+    func testValuesWithISO8601DateElement() throws {
+        if #available(OSX 10.12, *) {
+            let inputString = """
+                <Response>
+                    <Result>
+                        <Message>Hello</Message>
+                    </Result>
+                    <Metadata>
+                        <Id>id</Id>
+                        <Data>ZGF0YTE=</Data>
+                        <Date>2018-08-15T10:08:34-07:00</Date>
+                        <Bool>true</Bool>
+                        <Double>45.345</Double>
+                    </Metadata>
+                </Response>
+                """
+            
+            guard let inputData = inputString.data(using: .utf8) else {
+                return XCTFail()
+            }
+            
+            let decoder = XMLDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let response = try decoder.decode(Response.self, from: inputData)
+            
+            // encode the output to make sure we get what we started with
+            let encoder = XMLEncoder()
+            encoder.dateEncodingStrategy = .iso8601 // to match decoder strategy
+            let data = try encoder.encode(response, withRootKey: "Response")
+            
+            let response2 = try decoder.decode(Response.self, from: data)
+            XCTAssertEqual(response, response2)
+            
+            XCTAssertEqual("data1", String(data: response.metadata.data!, encoding: .utf8)) // decode the data
+            XCTAssertEqual(Date(timeIntervalSince1970: 1534352914), response.metadata.date) // decode the date
+            XCTAssertEqual(true, response.metadata.bool) // decode the boolean
+            
+            let double = response.metadata.double!
+            XCTAssertTrue(double > 45 && double < 46)
+        }
+    }
+    
+    /// Test that we can decode/encode empty structures correctly
+    func testEmptyStructureElement() throws {
         let inputString = """
             <Response>
                 <Result/>
@@ -103,7 +422,8 @@ class XMLParsingTests: XCTestCase {
         XCTAssertNil(response.result.message)
     }
 
-    func testEmptyElementNotEffectingPreviousElement() throws {
+    /// Test that we can decode/encode multiple empty structures without a later one wiping out the former
+    func testEmptyStructureElementNotEffectingPreviousElement() throws {
         let inputString = """
             <Response>
                 <Result>
@@ -125,6 +445,7 @@ class XMLParsingTests: XCTestCase {
         XCTAssertEqual("message", response.result.message)
     }
     
+    /// Test that we can decode/encode lists with the default strategy
     func testListDecodingWithDefaultStrategy() throws {
         guard let inputData = LIST_XML.data(using: .utf8) else {
             return XCTFail()
@@ -135,12 +456,14 @@ class XMLParsingTests: XCTestCase {
         XCTAssertEqual(3, response.metadataList.items.count)
         
         // encode the output to make sure we get what we started with
-        let data = try XMLEncoder().encode(response, withRootKey: "Response")
+        let encoder = XMLEncoder()
+        let data = try encoder.encode(response, withRootKey: "Response")
         
         let response2 = try XMLDecoder().decode(ResponseWithList.self, from: data)
         XCTAssertEqual(response, response2)
     }
     
+    /// Test that we can decode/encode single element lists with the default strategy
     func testSingletonListDecodingWithDefaultStrategy() throws {
         guard let inputData = SINGLETON_LIST_XML.data(using: .utf8) else {
             return XCTFail()
@@ -157,6 +480,7 @@ class XMLParsingTests: XCTestCase {
         XCTAssertEqual(response, response2)
     }
     
+    /// Test that we can decode/encode lists with the collapsing strategy
     func testListDecodingWithCollapseItemTagStrategy() throws {
         guard let inputData = LIST_XML.data(using: .utf8) else {
             return XCTFail()
@@ -178,6 +502,7 @@ class XMLParsingTests: XCTestCase {
         XCTAssertEqual(response, response2)
     }
     
+    /// Test that we can decode/encode single element lists with the collapsing strategy
     func testSingletonListDecodingWithCollapseItemTagStrategy() throws {
         guard let inputData = SINGLETON_LIST_XML.data(using: .utf8) else {
             return XCTFail()
@@ -200,10 +525,19 @@ class XMLParsingTests: XCTestCase {
     }
 
     static var allTests = [
-        ("testEmptyElement", testEmptyElement),
-        ("testEmptyElementNotEffectingPreviousElement", testEmptyElementNotEffectingPreviousElement),
+        ("testValuesElement", testValuesElement),
+        ("testEmptyValuesElement", testEmptyValuesElement),
+        ("testFailOnMissingStringElement", testFailOnMissingStringElement),
+        ("testFailOnMissingDataElement", testFailOnMissingDataElement),
+        ("testOptionalEmptyValuesElement", testOptionalEmptyValuesElement),
+        ("testOptionalMissingValuesElement", testOptionalMissingValuesElement),
+        ("testOptionalEmptyValuesCombinedTagElement", testOptionalEmptyValuesCombinedTagElement),
+        ("testValuesWithISO8601DateElement", testValuesWithISO8601DateElement),
+        ("testEmptyStructureElement", testEmptyStructureElement),
+        ("testEmptyStructureElementNotEffectingPreviousElement", testEmptyStructureElementNotEffectingPreviousElement),
         ("testListDecodingWithDefaultStrategy", testListDecodingWithDefaultStrategy),
         ("testSingletonListDecodingWithDefaultStrategy", testSingletonListDecodingWithDefaultStrategy),
-        ("testListDecodingWithCollapseItemTagStrategy", testListDecodingWithCollapseItemTagStrategy)
+        ("testListDecodingWithCollapseItemTagStrategy", testListDecodingWithCollapseItemTagStrategy),
+        ("testSingletonListDecodingWithCollapseItemTagStrategy", testSingletonListDecodingWithCollapseItemTagStrategy)
     ]
 }

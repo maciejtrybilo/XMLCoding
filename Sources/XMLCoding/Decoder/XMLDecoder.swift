@@ -345,7 +345,7 @@ extension _XMLDecoder {
     
     /// Returns the given value unboxed from a container.
     internal func unbox(_ value: Any, as type: Bool.Type) throws -> Bool? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let value = value as? String else {
             return nil
@@ -361,7 +361,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int.Type) throws -> Int? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -373,7 +373,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int8.Type) throws -> Int8? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -385,7 +385,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int16.Type) throws -> Int16? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -397,7 +397,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int32.Type) throws -> Int32? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -409,7 +409,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int64.Type) throws -> Int64? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -421,7 +421,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt.Type) throws -> UInt? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -433,7 +433,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt8.Type) throws -> UInt8? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -445,7 +445,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt16.Type) throws -> UInt16? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -457,7 +457,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt32.Type) throws -> UInt32? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -469,7 +469,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt64.Type) throws -> UInt64? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -481,7 +481,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Float.Type) throws -> Float? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -493,7 +493,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Double.Type) throws -> Double? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -505,7 +505,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: String.Type) throws -> String? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else {
             throw DecodingError._typeMismatch(at: self.codingPath, expectation: type, reality: value)
@@ -515,7 +515,9 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Date.Type) throws -> Date? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else {
+            return nil
+        }
         
         switch self.options.dateDecodingStrategy {
         case .deferredToDate:
@@ -561,7 +563,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Data.Type) throws -> Data? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         switch self.options.dataDecodingStrategy {
         case .deferredToData:
@@ -590,7 +592,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Decimal.Type) throws -> Decimal? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         // Attempt to bridge from NSDecimalNumber.
         let doubleValue = try self.unbox(value, as: Double.self)!
@@ -620,7 +622,12 @@ extension _XMLDecoder {
             guard let decimal = try self.unbox(value, as: Decimal.self) else { return nil }
             decoded = decimal as! T
         } else {
-            self.storage.push(container: value)
+            if value is MissingValue {
+                self.storage.push(container: [:])
+            } else {
+                self.storage.push(container: value)
+            }
+            
             decoded = try type.init(from: self)
             self.storage.popContainer()
         }
