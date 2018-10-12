@@ -18,6 +18,26 @@ let LIST_XML = """
     </Response>
     """
 
+let MAP_XML = """
+    <Response>
+        <Result />
+        <MetadataMap>
+            <item>
+                <Key>key1</Key>
+                <Value>value1</Value>
+            </item>
+            <item>
+                <Key>key2</Key>
+                <Value>value2</Value>
+            </item>
+            <item>
+                <Key>key3</Key>
+                <Value>value3</Value>
+            </item>
+        </MetadataMap>
+    </Response>
+    """
+
 let SINGLETON_LIST_XML = """
     <Response>
         <Result />
@@ -58,6 +78,17 @@ class XMLParsingTests: XCTestCase {
         }
     }
     
+    struct MapEntry: Codable, Equatable {
+        let key: String
+        let value: String
+
+        
+        enum CodingKeys: String, CodingKey {
+            case key = "Key"
+            case value = "Value"
+        }
+    }
+    
     struct MetadataWithData: Codable, Equatable {
         let id: String
         let data: Data
@@ -70,6 +101,22 @@ class XMLParsingTests: XCTestCase {
     
     struct MetadataList: Codable, Equatable {
         let items: [Metadata]
+        
+        enum CodingKeys: String, CodingKey {
+            case items = "item"
+        }
+    }
+    
+    struct MetadataMap: Codable, Equatable {
+        let items: [MapEntry]
+        
+        enum CodingKeys: String, CodingKey {
+            case items = "item"
+        }
+    }
+    
+    struct MetadataWithCollapsedMap: Codable, Equatable {
+        let items: [String: String]
         
         enum CodingKeys: String, CodingKey {
             case items = "item"
@@ -103,6 +150,36 @@ class XMLParsingTests: XCTestCase {
         enum CodingKeys: String, CodingKey {
             case result = "Result"
             case metadataList = "MetadataList"
+        }
+    }
+    
+    struct ResponseWithMap: Codable, Equatable {
+        let result: Result
+        let metadataMap: MetadataMap
+        
+        enum CodingKeys: String, CodingKey {
+            case result = "Result"
+            case metadataMap = "MetadataMap"
+        }
+    }
+    
+    struct ResponseWithCollapsedMap: Codable, Equatable {
+        let result: Result
+        let metadataMap: MetadataWithCollapsedMap
+        
+        enum CodingKeys: String, CodingKey {
+            case result = "Result"
+            case metadataMap = "MetadataMap"
+        }
+    }
+    
+    struct ResponseWithCollapsedListAndMap: Codable, Equatable {
+        let result: Result
+        let metadataMap: [String: String]
+        
+        enum CodingKeys: String, CodingKey {
+            case result = "Result"
+            case metadataMap = "MetadataMap"
         }
     }
     
@@ -463,6 +540,68 @@ class XMLParsingTests: XCTestCase {
         XCTAssertEqual(response, response2)
     }
     
+    /// Test that we can decode/encode maps with the default strategy
+    func testMapDecodingWithDefaultStrategy() throws {
+        guard let inputData = MAP_XML.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        let response = try XMLDecoder().decode(ResponseWithMap.self, from: inputData)
+        
+        XCTAssertEqual(3, response.metadataMap.items.count)
+        
+        // encode the output to make sure we get what we started with
+        let encoder = XMLEncoder()
+        let data = try encoder.encode(response, withRootKey: "Response")
+        
+        let response2 = try XMLDecoder().decode(ResponseWithMap.self, from: data)
+        XCTAssertEqual(response, response2)
+    }
+    
+    /// Test that we can decode/encode maps with collapsed maps
+    func testMapDecodingWithCollapsedMap() throws {
+        guard let inputData = MAP_XML.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        let decoder = XMLDecoder()
+        decoder.mapDecodingStrategy = .collapseMapUsingTags(keyTag: "Key", valueTag: "Value")
+        let response = try! decoder.decode(ResponseWithCollapsedMap.self, from: inputData)
+        
+        XCTAssertEqual(3, response.metadataMap.items.count)
+        
+        // encode the output to make sure we get what we started with
+        let encoder = XMLEncoder()
+        encoder.mapEncodingStrategy = .expandMapUsingTags(keyTag: "Key", valueTag: "Value")
+        let data = try encoder.encode(response, withRootKey: "Response")
+        
+        let response2 = try decoder.decode(ResponseWithCollapsedMap.self, from: data)
+        XCTAssertEqual(response, response2)
+    }
+    
+    /// Test that we can decode/encode maps with collapsed lists and maps
+    func testMapDecodingWithCollapsedListAndMap() throws {
+        guard let inputData = MAP_XML.data(using: .utf8) else {
+            return XCTFail()
+        }
+        
+        let decoder = XMLDecoder()
+        decoder.mapDecodingStrategy = .collapseMapUsingTags(keyTag: "Key", valueTag: "Value")
+        decoder.listDecodingStrategy = .collapseListUsingItemTag("item")
+        let response = try! decoder.decode(ResponseWithCollapsedListAndMap.self, from: inputData)
+        
+        XCTAssertEqual(3, response.metadataMap.count)
+        
+        // encode the output to make sure we get what we started with
+        let encoder = XMLEncoder()
+        encoder.mapEncodingStrategy = .expandMapUsingTags(keyTag: "Key", valueTag: "Value")
+        encoder.listEncodingStrategy = .expandListWithItemTag("item")
+        let data = try encoder.encode(response, withRootKey: "Response")
+        
+        let response2 = try decoder.decode(ResponseWithCollapsedListAndMap.self, from: data)
+        XCTAssertEqual(response, response2)
+    }
+    
     /// Test that we can decode/encode single element lists with the default strategy
     func testSingletonListDecodingWithDefaultStrategy() throws {
         guard let inputData = SINGLETON_LIST_XML.data(using: .utf8) else {
@@ -536,6 +675,9 @@ class XMLParsingTests: XCTestCase {
         ("testEmptyStructureElement", testEmptyStructureElement),
         ("testEmptyStructureElementNotEffectingPreviousElement", testEmptyStructureElementNotEffectingPreviousElement),
         ("testListDecodingWithDefaultStrategy", testListDecodingWithDefaultStrategy),
+        ("testMapDecodingWithDefaultStrategy", testMapDecodingWithDefaultStrategy),
+        ("testMapDecodingWithCollapsedMap", testMapDecodingWithCollapsedMap),
+        ("testMapDecodingWithCollapsedListAndMap", testMapDecodingWithCollapsedListAndMap),
         ("testSingletonListDecodingWithDefaultStrategy", testSingletonListDecodingWithDefaultStrategy),
         ("testListDecodingWithCollapseItemTagStrategy", testListDecodingWithCollapseItemTagStrategy),
         ("testSingletonListDecodingWithCollapseItemTagStrategy", testSingletonListDecodingWithCollapseItemTagStrategy)

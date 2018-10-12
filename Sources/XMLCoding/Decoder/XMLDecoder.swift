@@ -115,6 +115,31 @@ open class XMLDecoder {
         case collapseListUsingItemTag(String)
     }
     
+    /// The strategy to use when decoding maps.
+    public enum MapDecodingStrategy {
+        /// Preserves the XML structure. Key and Value tags will be retained producing a
+        /// list of elements with these two attributes. This is the default strategy.
+        case preserveStructure
+        
+        /// Collapse the XML structure to avoid key and value tags. For example-
+        /// <Result>
+        ///   <Tag>
+        ///     <Key>QueueType</Key>
+        ///     <Value>Production</Value>
+        ///   </Tag>
+        ///   <Tag>
+        ///     <Key>Owner</Key>
+        ///     <Value>Developer123</Value>
+        ///   </Tag>
+        /// </Result>
+        ///
+        /// will be decoded into
+        /// struct Result {
+        ///     let tags: [String: String]
+        /// }
+        case collapseMapUsingTags(keyTag: String, valueTag: String)
+    }
+    
     /// The strategy to use in decoding dates. Defaults to `.secondsSince1970`.
     open var dateDecodingStrategy: DateDecodingStrategy = .secondsSince1970
     
@@ -127,6 +152,9 @@ open class XMLDecoder {
     /// The strategy to use in decoding lists. Defaults to `.preserveStructure`.
     open var listDecodingStrategy: ListDecodingStrategy = .preserveStructure
     
+    /// The strategy to use in decoding maps. Defaults to `.preserveStructure`.
+    open var mapDecodingStrategy: MapDecodingStrategy = .preserveStructure
+    
     /// Contextual user-provided information for use during decoding.
     open var userInfo: [CodingUserInfoKey : Any] = [:]
     
@@ -136,6 +164,7 @@ open class XMLDecoder {
         let dataDecodingStrategy: DataDecodingStrategy
         let nonConformingFloatDecodingStrategy: NonConformingFloatDecodingStrategy
         let listDecodingStrategy: ListDecodingStrategy
+        let mapDecodingStrategy: MapDecodingStrategy
         let userInfo: [CodingUserInfoKey : Any]
     }
     
@@ -145,6 +174,7 @@ open class XMLDecoder {
                         dataDecodingStrategy: dataDecodingStrategy,
                         nonConformingFloatDecodingStrategy: nonConformingFloatDecodingStrategy,
                         listDecodingStrategy: listDecodingStrategy,
+                        mapDecodingStrategy: mapDecodingStrategy,
                         userInfo: userInfo)
     }
     
@@ -216,7 +246,45 @@ internal class _XMLDecoder : Decoder {
                                                                     debugDescription: "Cannot get keyed decoding container -- found null value instead."))
         }
         
-        guard let topContainer = self.storage.topContainer as? [String : Any] else {
+        let topContainer: [String : Any]
+        // if this is a dictionary
+        if let currentContainer = self.storage.topContainer as? [String : Any] {
+            
+            // if we are combining collapsing lists and maps
+            if case let .collapseListUsingItemTag(itemTag) = options.listDecodingStrategy,
+                case let .collapseMapUsingTags(keyTag: keyTag, valueTag: valueTag) = options.mapDecodingStrategy,
+                let itemList = currentContainer[itemTag] as? [Any] {
+                    var newContainer: [String: Any] = [:]
+                
+                    // construct a dictionary from each entry and the key and value tags
+                    itemList.forEach { entry in
+                        if let keyedContainer = entry as? [String : Any],
+                            let key = keyedContainer[keyTag] as? String,
+                            let value = keyedContainer[valueTag] {
+                            newContainer[key] = value
+                        }
+                    }
+                
+                    topContainer = newContainer
+            } else {
+                topContainer = currentContainer
+            }
+        // if this is a list and the mapDecodingStrategy is collapseMapUsingTags
+        } else if let currentContainer = self.storage.topContainer as? [Any],
+            case let .collapseMapUsingTags(keyTag: keyTag, valueTag: valueTag) = options.mapDecodingStrategy {
+            var newContainer: [String: Any] = [:]
+            
+            // construct a dictionary from each entry and the key and value tags
+            currentContainer.forEach { entry in
+                if let keyedContainer = entry as? [String : Any],
+                    let key = keyedContainer[keyTag] as? String,
+                    let value = keyedContainer[valueTag] {
+                        newContainer[key] = value
+                }
+            }
+            
+            topContainer = newContainer
+        } else {
             throw DecodingError._typeMismatch(at: self.codingPath, expectation: [String : Any].self, reality: self.storage.topContainer)
         }
         

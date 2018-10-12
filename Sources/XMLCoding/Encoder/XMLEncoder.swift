@@ -187,6 +187,31 @@ open class XMLEncoder {
         case expandListWithItemTag(String)
     }
     
+    /// The strategy to use when encoding maps.
+    public enum MapEncodingStrategy {
+        /// Preserves the XML structure. Key and Value tags will be retained producing a
+        /// list of elements with these two attributes. This is the default strategy.
+        case preserveStructure
+        
+        /// Expands the XML structure to avoid key and value tags. For example-
+        /// <Result>
+        ///   <Tag>
+        ///     <Key>QueueType</Key>
+        ///     <Value>Production</Value>
+        ///   </Tag>
+        ///   <Tag>
+        ///     <Key>Owner</Key>
+        ///     <Value>Developer123</Value>
+        ///   </Tag>
+        /// </Result>
+        ///
+        /// will be encoded from
+        /// struct Result {
+        ///     let tags: [String: String]
+        /// }
+        case expandMapUsingTags(keyTag: String, valueTag: String)
+    }
+    
     /// The output format to produce. Defaults to `[]`.
     open var outputFormatting: OutputFormatting = []
     
@@ -211,6 +236,9 @@ open class XMLEncoder {
     /// The strategy to use in encoding lists. Defaults to `.preserveStructure`.
     open var listEncodingStrategy: ListEncodingStrategy = .preserveStructure
     
+    /// The strategy to use in encoding map. Defaults to `.preserveStructure`.
+    open var mapEncodingStrategy: MapEncodingStrategy = .preserveStructure
+    
     /// Contextual user-provided information for use during encoding.
     open var userInfo: [CodingUserInfoKey : Any] = [:]
     
@@ -223,6 +251,7 @@ open class XMLEncoder {
         let attributeEncodingStrategy: AttributeEncodingStrategy
         let stringEncodingStrategy: StringEncodingStrategy
         let listEncodingStrategy: ListEncodingStrategy
+        let mapEncodingStrategy: MapEncodingStrategy
         let userInfo: [CodingUserInfoKey : Any]
     }
     
@@ -235,6 +264,7 @@ open class XMLEncoder {
                         attributeEncodingStrategy: attributeEncodingStrategy,
                         stringEncodingStrategy: stringEncodingStrategy,
                         listEncodingStrategy: listEncodingStrategy,
+                        mapEncodingStrategy: mapEncodingStrategy,
                         userInfo: userInfo)
     }
     
@@ -936,6 +966,9 @@ extension _XMLEncoder {
             return .uint64(UInt64(int))
         } else if let int = value as? UInt32 {
             return .uint64(UInt64(int))
+        } else if let boxableEncodable = value as? BoxableEncodable {
+            // this type knows how to box itself
+            return try boxableEncodable.box(forEncoder: self)
         }
         
         let depth = self.storage.count
@@ -947,6 +980,61 @@ extension _XMLEncoder {
         }
         
         return self.storage.popContainer()
+    }
+}
+
+/// Protocol for a type that knows how to box itself
+protocol BoxableEncodable: Encodable {
+    func box(forEncoder encoder: _XMLEncoder) throws -> MutableContainer?
+}
+
+extension Dictionary: BoxableEncodable where Key == String, Value: Encodable {
+    /// function to box (and potentially expand
+    internal func box(forEncoder encoder: _XMLEncoder) throws -> MutableContainer? {
+        let depth = encoder.storage.count
+        // if we are expanding maps
+        if case let .expandMapUsingTags(keyTag: keyTag, valueTag: valueTag) = encoder.options.mapEncodingStrategy {
+            let outerMutableContainer: (MutableContainerDictionary, String)?
+            // if we are expanding lists, wrap everything in a dictionary with that item
+            if case let .expandListWithItemTag(itemTag) = encoder.options.listEncodingStrategy {
+                let newMutableContainerDictionary = MutableContainerDictionary()
+                encoder.storage.push(container: .dictionary(newMutableContainerDictionary))
+                outerMutableContainer = (newMutableContainerDictionary, itemTag)
+            } else {
+                outerMutableContainer = nil
+            }
+            
+            // create the expanded array
+            let mutableContainerArray = MutableContainerArray()
+            encoder.storage.push(container: .array(mutableContainerArray))
+            
+            try self.forEach { (key, value) in
+                // create the dictionary for the key and value entries
+                let mutableContainerDictionary = MutableContainerDictionary()
+                encoder.storage.push(container: .dictionary(mutableContainerDictionary))
+                mutableContainerDictionary[keyTag] = .string(key)
+                mutableContainerDictionary[valueTag] = try encoder.box(value)
+                
+                // add to the array
+                mutableContainerArray.append(encoder.storage.popContainer())
+            }
+            
+            // add to the outer container if it is needed
+            if let outerMutableContainer = outerMutableContainer {
+                outerMutableContainer.0[outerMutableContainer.1] = encoder.storage.popContainer()
+            }
+        } else {
+            // otherwise just encode this array as normal
+            try self.encode(to: encoder)
+        }
+        
+        // The top container should be a new container.
+        guard encoder.storage.count > depth else {
+            return nil
+        }
+        
+        // return what has been created
+        return encoder.storage.popContainer()
     }
 }
 
