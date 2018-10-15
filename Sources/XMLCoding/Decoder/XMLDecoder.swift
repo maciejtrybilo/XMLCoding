@@ -239,6 +239,21 @@ internal class _XMLDecoder : Decoder {
     
     // MARK: - Decoder Methods
     
+    private func getMapFromListOfEntries(entryList: [Any], keyTag: String, valueTag: String) -> [String : Any] {
+        var newContainer: [String: Any] = [:]
+        
+        // construct a dictionary from each entry and the key and value tags
+        entryList.forEach { entry in
+            if let keyedContainer = entry as? [String : Any],
+                let key = keyedContainer[keyTag] as? String,
+                let value = keyedContainer[valueTag] {
+                newContainer[key] = value
+            }
+        }
+        
+        return newContainer
+    }
+    
     public func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key> {
         guard !(self.storage.topContainer is NSNull) else {
             throw DecodingError.valueNotFound(KeyedDecodingContainer<Key>.self,
@@ -254,36 +269,14 @@ internal class _XMLDecoder : Decoder {
             if case let .collapseListUsingItemTag(itemTag) = options.listDecodingStrategy,
                 case let .collapseMapUsingTags(keyTag: keyTag, valueTag: valueTag) = options.mapDecodingStrategy,
                 let itemList = currentContainer[itemTag] as? [Any] {
-                    var newContainer: [String: Any] = [:]
-                
-                    // construct a dictionary from each entry and the key and value tags
-                    itemList.forEach { entry in
-                        if let keyedContainer = entry as? [String : Any],
-                            let key = keyedContainer[keyTag] as? String,
-                            let value = keyedContainer[valueTag] {
-                            newContainer[key] = value
-                        }
-                    }
-                
-                    topContainer = newContainer
+                topContainer = getMapFromListOfEntries(entryList: itemList, keyTag: keyTag, valueTag: valueTag)
             } else {
                 topContainer = currentContainer
             }
         // if this is a list and the mapDecodingStrategy is collapseMapUsingTags
         } else if let currentContainer = self.storage.topContainer as? [Any],
             case let .collapseMapUsingTags(keyTag: keyTag, valueTag: valueTag) = options.mapDecodingStrategy {
-            var newContainer: [String: Any] = [:]
-            
-            // construct a dictionary from each entry and the key and value tags
-            currentContainer.forEach { entry in
-                if let keyedContainer = entry as? [String : Any],
-                    let key = keyedContainer[keyTag] as? String,
-                    let value = keyedContainer[valueTag] {
-                        newContainer[key] = value
-                }
-            }
-            
-            topContainer = newContainer
+            topContainer = getMapFromListOfEntries(entryList: currentContainer, keyTag: keyTag, valueTag: valueTag)
         } else {
             throw DecodingError._typeMismatch(at: self.codingPath, expectation: [String : Any].self, reality: self.storage.topContainer)
         }
