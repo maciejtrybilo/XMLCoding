@@ -11,7 +11,7 @@ import Foundation
 //===----------------------------------------------------------------------===//
 // Error Utilities
 //===----------------------------------------------------------------------===//
-internal extension EncodingError {
+extension EncodingError {
     /// Returns a `.invalidValue` error describing the given invalid floating-point value.
     ///
     ///
