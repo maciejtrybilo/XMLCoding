@@ -102,6 +102,44 @@ open class XMLDecoder {
         case convertFromString(positiveInfinity: String, negativeInfinity: String, nan: String)
     }
     
+    /// The strategy to use when decoding lists.
+    public enum ListDecodingStrategy {
+        /// Preserves the XML structure, an outer type will contain lists
+        /// grouped under the tag used for individual items. This is the default strategy.
+        case preserveStructure
+        
+        /// Collapse the XML structure to avoid the outer type.
+        /// Useful when individual items will all be listed under one tag;
+        /// the outer type will only include one list under this tag and can be
+        /// omitted.
+        case collapseListUsingItemTag(String)
+    }
+    
+    /// The strategy to use when decoding maps.
+    public enum MapDecodingStrategy {
+        /// Preserves the XML structure. Key and Value tags will be retained producing a
+        /// list of elements with these two attributes. This is the default strategy.
+        case preserveStructure
+        
+        /// Collapse the XML structure to avoid key and value tags. For example-
+        /// <Result>
+        ///   <Tag>
+        ///     <Key>QueueType</Key>
+        ///     <Value>Production</Value>
+        ///   </Tag>
+        ///   <Tag>
+        ///     <Key>Owner</Key>
+        ///     <Value>Developer123</Value>
+        ///   </Tag>
+        /// </Result>
+        ///
+        /// will be decoded into
+        /// struct Result {
+        ///     let tags: [String: String]
+        /// }
+        case collapseMapUsingTags(keyTag: String, valueTag: String)
+    }
+    
     /// The strategy to use in decoding dates. Defaults to `.secondsSince1970`.
     open var dateDecodingStrategy: DateDecodingStrategy = .secondsSince1970
     
@@ -111,6 +149,12 @@ open class XMLDecoder {
     /// The strategy to use in decoding non-conforming numbers. Defaults to `.throw`.
     open var nonConformingFloatDecodingStrategy: NonConformingFloatDecodingStrategy = .throw
     
+    /// The strategy to use in decoding lists. Defaults to `.preserveStructure`.
+    open var listDecodingStrategy: ListDecodingStrategy = .preserveStructure
+    
+    /// The strategy to use in decoding maps. Defaults to `.preserveStructure`.
+    open var mapDecodingStrategy: MapDecodingStrategy = .preserveStructure
+    
     /// Contextual user-provided information for use during decoding.
     open var userInfo: [CodingUserInfoKey : Any] = [:]
     
@@ -119,6 +163,8 @@ open class XMLDecoder {
         let dateDecodingStrategy: DateDecodingStrategy
         let dataDecodingStrategy: DataDecodingStrategy
         let nonConformingFloatDecodingStrategy: NonConformingFloatDecodingStrategy
+        let listDecodingStrategy: ListDecodingStrategy
+        let mapDecodingStrategy: MapDecodingStrategy
         let userInfo: [CodingUserInfoKey : Any]
     }
     
@@ -127,6 +173,8 @@ open class XMLDecoder {
         return _Options(dateDecodingStrategy: dateDecodingStrategy,
                         dataDecodingStrategy: dataDecodingStrategy,
                         nonConformingFloatDecodingStrategy: nonConformingFloatDecodingStrategy,
+                        listDecodingStrategy: listDecodingStrategy,
+                        mapDecodingStrategy: mapDecodingStrategy,
                         userInfo: userInfo)
     }
     
@@ -191,6 +239,21 @@ internal class _XMLDecoder : Decoder {
     
     // MARK: - Decoder Methods
     
+    private func getMapFromListOfEntries(entryList: [Any], keyTag: String, valueTag: String) -> [String : Any] {
+        var newContainer: [String: Any] = [:]
+        
+        // construct a dictionary from each entry and the key and value tags
+        entryList.forEach { entry in
+            if let keyedContainer = entry as? [String : Any],
+                let key = keyedContainer[keyTag] as? String,
+                let value = keyedContainer[valueTag] {
+                newContainer[key] = value
+            }
+        }
+        
+        return newContainer
+    }
+    
     public func container<Key>(keyedBy type: Key.Type) throws -> KeyedDecodingContainer<Key> {
         guard !(self.storage.topContainer is NSNull) else {
             throw DecodingError.valueNotFound(KeyedDecodingContainer<Key>.self,
@@ -198,7 +261,23 @@ internal class _XMLDecoder : Decoder {
                                                                     debugDescription: "Cannot get keyed decoding container -- found null value instead."))
         }
         
-        guard let topContainer = self.storage.topContainer as? [String : Any] else {
+        let topContainer: [String : Any]
+        // if this is a dictionary
+        if let currentContainer = self.storage.topContainer as? [String : Any] {
+            
+            // if we are combining collapsing lists and maps
+            if case let .collapseListUsingItemTag(itemTag) = options.listDecodingStrategy,
+                case let .collapseMapUsingTags(keyTag: keyTag, valueTag: valueTag) = options.mapDecodingStrategy,
+                let itemList = currentContainer[itemTag] as? [Any] {
+                topContainer = getMapFromListOfEntries(entryList: itemList, keyTag: keyTag, valueTag: valueTag)
+            } else {
+                topContainer = currentContainer
+            }
+        // if this is a list and the mapDecodingStrategy is collapseMapUsingTags
+        } else if let currentContainer = self.storage.topContainer as? [Any],
+            case let .collapseMapUsingTags(keyTag: keyTag, valueTag: valueTag) = options.mapDecodingStrategy {
+            topContainer = getMapFromListOfEntries(entryList: currentContainer, keyTag: keyTag, valueTag: valueTag)
+        } else {
             throw DecodingError._typeMismatch(at: self.codingPath, expectation: [String : Any].self, reality: self.storage.topContainer)
         }
         
@@ -327,7 +406,7 @@ extension _XMLDecoder {
     
     /// Returns the given value unboxed from a container.
     internal func unbox(_ value: Any, as type: Bool.Type) throws -> Bool? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let value = value as? String else {
             return nil
@@ -343,7 +422,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int.Type) throws -> Int? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -355,7 +434,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int8.Type) throws -> Int8? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -367,7 +446,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int16.Type) throws -> Int16? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -379,7 +458,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int32.Type) throws -> Int32? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -391,7 +470,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Int64.Type) throws -> Int64? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -403,7 +482,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt.Type) throws -> UInt? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -415,7 +494,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt8.Type) throws -> UInt8? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -427,7 +506,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt16.Type) throws -> UInt16? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -439,7 +518,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt32.Type) throws -> UInt32? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -451,7 +530,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: UInt64.Type) throws -> UInt64? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -463,7 +542,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Float.Type) throws -> Float? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -475,7 +554,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Double.Type) throws -> Double? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else { return nil }
         
@@ -487,7 +566,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: String.Type) throws -> String? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         guard let string = value as? String else {
             throw DecodingError._typeMismatch(at: self.codingPath, expectation: type, reality: value)
@@ -497,7 +576,9 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Date.Type) throws -> Date? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else {
+            return nil
+        }
         
         switch self.options.dateDecodingStrategy {
         case .deferredToDate:
@@ -543,7 +624,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Data.Type) throws -> Data? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         switch self.options.dataDecodingStrategy {
         case .deferredToData:
@@ -572,7 +653,7 @@ extension _XMLDecoder {
     }
     
     internal func unbox(_ value: Any, as type: Decimal.Type) throws -> Decimal? {
-        guard !(value is NSNull) else { return nil }
+        guard !(value is MissingValue) else { return nil }
         
         // Attempt to bridge from NSDecimalNumber.
         let doubleValue = try self.unbox(value, as: Double.self)!
@@ -602,7 +683,12 @@ extension _XMLDecoder {
             guard let decimal = try self.unbox(value, as: Decimal.self) else { return nil }
             decoded = decimal as! T
         } else {
-            self.storage.push(container: value)
+            if value is MissingValue {
+                self.storage.push(container: [:])
+            } else {
+                self.storage.push(container: value)
+            }
+            
             decoded = try type.init(from: self)
             self.storage.popContainer()
         }
@@ -610,4 +696,3 @@ extension _XMLDecoder {
         return decoded
     }
 }
-
